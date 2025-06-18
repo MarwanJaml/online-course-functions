@@ -2,8 +2,13 @@ trigger:
 - main
 
 variables:
+  # Azure Resource Manager connection
   azureSubscription: '3342ab2b-0e16-40c7-8cd8-76f10a1c3de5'
+  
+  # Function app name
   functionAppName: 'onlinecourse-product-api'
+  
+  # Working Directory
   workingDirectory: 'S'
 
 stages:
@@ -12,16 +17,16 @@ stages:
   jobs:
   - job: Build
     displayName: Build
-    pool: 'My Pool'  # Simplified version
+    pool:
+      vmImage: 'windows-latest'  # Microsoft-hosted Windows agent
 
     steps:
     - task: DotNetCoreCLI@2
       displayName: Build
       inputs:
         command: 'build'
-        projects: |
-          $(workingDirectory)/*.csproj
-        arguments: --output $(System.DefaultWorkingDirectory)/publish_output --configuration Release
+        projects: '$(workingDirectory)/*.csproj'
+        arguments: '--output $(System.DefaultWorkingDirectory)/publish_output --configuration Release'
 
     - task: ArchiveFiles@2
       displayName: 'Archive files'
@@ -29,10 +34,10 @@ stages:
         rootFolderOrFile: '$(System.DefaultWorkingDirectory)/publish_output'
         includeRootFolder: false
         archiveType: zip
-        archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
         replaceExistingArchive: true
 
-    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+    - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
       artifact: drop
 
 - stage: Deploy
@@ -43,7 +48,8 @@ stages:
   - deployment: Deploy
     displayName: Deploy
     environment: 'development'
-    pool: 'My Pool'  # Same simplified version
+    pool:
+      vmImage: 'windows-latest'  # Microsoft-hosted Windows agent
     strategy:
       runOnce:
         deploy:
