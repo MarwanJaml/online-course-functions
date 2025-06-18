@@ -12,8 +12,11 @@ stages:
   jobs:
   - job: Build
     displayName: Build
-    pool: 'My Pool'  # 👈 Uses your self-hosted agent pool
-    
+    pool: 
+      name: 'My Pool'
+      demands:  # 👈 Reduced demands (remove version check)
+        - Agent.Name -equals YourAgentName  # Optional: Target specific agent
+
     steps:
     - task: DotNetCoreCLI@2
       displayName: Build
@@ -44,8 +47,10 @@ stages:
   - deployment: Deploy
     displayName: Deploy
     environment: 'development'
-    pool: 'My Pool'  # 👈 Also uses your self-hosted pool for deployment
-    
+    pool: 
+      name: 'My Pool'
+      demands: []  # 👈 No demands (or keep minimal)
+
     strategy:
       runOnce:
         deploy:
