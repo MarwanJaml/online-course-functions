@@ -1,81 +1,64 @@
-name: Build and deploy .NET Core application to Function App
+name: Build and deploy Azure Functions
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 env:
   AZURE_FUNCTIONAPP_NAME: OnilneCourseFunctions20250627065838
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: ./published
-  CONFIGURATION: Release
-  DOTNET_CORE_VERSION: 8.0.x
-  WORKING_DIRECTORY: .
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './published'
+  CONFIGURATION: 'Release'
+  DOTNET_VERSION: '8.0.x'
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_CORE_VERSION }}
-          
-      - name: Restore
-        run: dotnet restore "${{ env.WORKING_DIRECTORY }}"
-        
-      - name: Build
-        run: dotnet build "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-restore
-        
-      - name: Publish
-        run: |
-          dotnet publish "${{ env.WORKING_DIRECTORY }}" \
-          --configuration ${{ env.CONFIGURATION }} \
-          --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" \
-          -p:GenerateFunctionsJsonMetadata=true \
-          -p:GenerateRuntimeConfigurationFiles=true \
-          -p:PreserveCompilationContext=true \
-          -p:EnablePackageProcessLoggingAndAssert=true \
-          -p:PackageAsSingleFile=false \
-          -p:DeployOnBuild=true \
-          --no-restore \
-          --verbosity detailed
-        
-      - name: Publish Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: functionapp
-          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: functionapp
-          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
-      - name: Deploy to Azure Function App
-        uses: Azure/functions-action@v1
-        with:
-          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          scm-do-build-during-deployment: false
-          enable-oryx-build: false
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+    - uses: actions/checkout@v4
 
-      - name: Verify Deployment
-        run: |
-          echo "Waiting 30 seconds for functions to initialize..."
-          sleep 30
-          curl -X GET "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/admin/functions" \
-          -H "x-functions-key: ${{ secrets.FUNCTION_MASTER_KEY }}"
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore with force evaluation
+      run: dotnet restore --force-evaluate
+
+    - name: Build
+      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+
+    - name: Publish
+      run: |
+        dotnet publish \
+        --configuration ${{ env.CONFIGURATION }} \
+        --output ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }} \
+        -p:GenerateFunctionsJsonMetadata=true \
+        --no-build
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: function-app
+        path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+  deploy:
+    needs: build
+    runs-on: windows-latest
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: function-app
+        path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Function App
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
