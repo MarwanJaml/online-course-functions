@@ -22,47 +22,54 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Restore with force evaluation
-      run: dotnet restore "${{ env.WORKING_DIRECTORY }}" --force-evaluate
-
-    - name: Build
+    - name: Restore dependencies
       run: |
-        dotnet build "${{ env.WORKING_DIRECTORY }}" \
-        --configuration ${{ env.CONFIGURATION }} \
-        --no-restore \
-        --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+        dotnet restore "${{ env.WORKING_DIRECTORY }}" `
+        --force-evaluate `
+        --verbosity detailed
 
-    - name: Publish
+    - name: Build solution
       run: |
-        dotnet publish "${{ env.WORKING_DIRECTORY }}" \
-        --configuration ${{ env.CONFIGURATION }} \
-        --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" \
-        -p:GenerateFunctionsJsonMetadata=true \
-        -p:GenerateRuntimeConfigurationFiles=true \
-        --no-build
+        dotnet build "${{ env.WORKING_DIRECTORY }}" `
+        --configuration ${{ env.CONFIGURATION }} `
+        --no-restore `
+        --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" `
+        --verbosity detailed
 
-    - name: Zip artifacts
+    - name: Publish application
+      run: |
+        dotnet publish "${{ env.WORKING_DIRECTORY }}" `
+        --configuration ${{ env.CONFIGURATION }} `
+        --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" `
+        -p:GenerateFunctionsJsonMetadata=true `
+        -p:GenerateRuntimeConfigurationFiles=true `
+        -p:DeployOnBuild=true `
+        --no-build `
+        --verbosity detailed
+
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: function-app
         path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        retention-days: 1
 
   deploy:
     needs: build
     runs-on: windows-latest
     steps:
-    - name: Download artifact
+    - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: function-app
         path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
 
-    - name: Azure Login
+    - name: Login to Azure
       uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy to Function App
+    - name: Deploy to Azure Functions
       uses: Azure/functions-action@v1
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
@@ -73,7 +80,9 @@ jobs:
 
     - name: Verify deployment
       run: |
-        echo "Waiting for functions to initialize..."
-        sleep 30
-        curl -X GET "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/admin/functions" \
-             -H "x-functions-key: $(curl -s https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/functions/admin/masterkey | jq -r .masterKey)"
+        Write-Host "Waiting for functions to initialize..."
+        Start-Sleep -Seconds 30
+        $masterKey = (Invoke-RestMethod -Uri "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/functions/admin/masterkey").masterKey
+        Invoke-RestMethod -Uri "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/admin/functions" `
+          -Headers @{"x-functions-key"=$masterKey} `
+          -Method Get
