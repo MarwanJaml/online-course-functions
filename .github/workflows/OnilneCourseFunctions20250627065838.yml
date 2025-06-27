@@ -1,14 +1,17 @@
-name: Build and deploy .NET Core application to Function App OnilneCourseFunctions20250627065838
+name: Build and deploy .NET Core application to Function App
+
 on:
   push:
     branches:
       - main
+
 env:
   AZURE_FUNCTIONAPP_NAME: OnilneCourseFunctions20250627065838
   AZURE_FUNCTIONAPP_PACKAGE_PATH: ./published
   CONFIGURATION: Release
   DOTNET_CORE_VERSION: 8.0.x
   WORKING_DIRECTORY: .
+
 jobs:
   build:
     runs-on: windows-latest
@@ -27,7 +30,18 @@ jobs:
         run: dotnet build "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-restore
         
       - name: Publish
-        run: dotnet publish "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+        run: |
+          dotnet publish "${{ env.WORKING_DIRECTORY }}" \
+          --configuration ${{ env.CONFIGURATION }} \
+          --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" \
+          -p:GenerateFunctionsJsonMetadata=true \
+          -p:GenerateRuntimeConfigurationFiles=true \
+          -p:PreserveCompilationContext=true \
+          -p:EnablePackageProcessLoggingAndAssert=true \
+          -p:PackageAsSingleFile=false \
+          -p:DeployOnBuild=true \
+          --no-restore \
+          --verbosity detailed
         
       - name: Publish Artifacts
         uses: actions/upload-artifact@v4
@@ -48,7 +62,7 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.ONLINECOURSEFUNCTIONS20250627065838_SPN }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
           
       - name: Deploy to Azure Function App
         uses: Azure/functions-action@v1
@@ -57,3 +71,11 @@ jobs:
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
           scm-do-build-during-deployment: false
           enable-oryx-build: false
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+
+      - name: Verify Deployment
+        run: |
+          echo "Waiting 30 seconds for functions to initialize..."
+          sleep 30
+          curl -X GET "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/admin/functions" \
+          -H "x-functions-key: ${{ secrets.FUNCTION_MASTER_KEY }}"
