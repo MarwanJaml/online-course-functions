@@ -10,6 +10,7 @@ env:
   CONFIGURATION: 'Release'
   DOTNET_VERSION: '8.0.x'
   WORKING_DIRECTORY: '.'
+  PROJECT_PATH: './OnilneCourseFunctions.csproj'  # Specify the project file directly
 
 jobs:
   build:
@@ -23,23 +24,19 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
     - name: Restore dependencies
-      run: dotnet restore "${{ env.WORKING_DIRECTORY }}" --force-evaluate
+      run: dotnet restore "${{ env.PROJECT_PATH }}"
     
     - name: Build solution
       run: |
-        dotnet build "${{ env.WORKING_DIRECTORY }}" `
+        dotnet build "${{ env.PROJECT_PATH }}" `
         --configuration ${{ env.CONFIGURATION }} `
-        --no-restore `
-        --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+        --no-restore
     
     - name: Publish application
       run: |
-        dotnet publish "${{ env.WORKING_DIRECTORY }}" `
+        dotnet publish "${{ env.PROJECT_PATH }}" `
         --configuration ${{ env.CONFIGURATION }} `
         --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" `
-        -p:GenerateFunctionsJsonMetadata=true `
-        -p:GenerateRuntimeConfigurationFiles=true `
-        -p:DeployOnBuild=true `
         --no-build
     
     - name: Upload artifacts
