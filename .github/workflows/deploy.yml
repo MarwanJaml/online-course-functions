@@ -1,65 +1,70 @@
-name: Build and deploy Azure Functions
+name: Build and Deploy Azure Functions
 
 on:
   push:
     branches: [ main ]
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'onlinecourse-product-api'  # Your Azure Portal Function App name
+  AZURE_FUNCTIONAPP_NAME: 'onlinecourse-product-api'
   AZURE_FUNCTIONAPP_PACKAGE_PATH: './published'
   CONFIGURATION: 'Release'
   DOTNET_VERSION: '8.0.x'
   WORKING_DIRECTORY: '.'
-  PROJECT_PATH: './OnilneCourseFunctions.csproj'  # Specify the project file directly
+  PROJECT_PATH: './OnilneCourseFunctions.csproj'
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET 8
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-    
-    - name: Restore dependencies
-      run: dotnet restore "${{ env.PROJECT_PATH }}"
-    
-    - name: Build solution
-      run: |
-        dotnet build "${{ env.PROJECT_PATH }}" `
-        --configuration ${{ env.CONFIGURATION }} `
-        --no-restore
-    
-    - name: Publish application
-      run: |
-        dotnet publish "${{ env.PROJECT_PATH }}" `
-        --configuration ${{ env.CONFIGURATION }} `
-        --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" `
-        --no-build
-    
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: function-app
-        path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Restore dependencies
+        run: dotnet restore "${{ env.PROJECT_PATH }}"
+      
+      - name: Build solution
+        run: |
+          dotnet build "${{ env.PROJECT_PATH }}" `
+          --configuration ${{ env.CONFIGURATION }} `
+          --no-restore
+      
+      - name: Publish application
+        run: |
+          dotnet publish "${{ env.PROJECT_PATH }}" `
+          --configuration ${{ env.CONFIGURATION }} `
+          --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}" `
+          --no-build
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: function-app
+          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
 
   deploy:
     needs: build
     runs-on: windows-latest
+    environment: production
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: function-app
-        path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-    
-    - name: Deploy to Azure Functions
-      uses: Azure/functions-action@v1
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        scm-do-build-during-deployment: false
-        enable-oryx-build: false
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: function-app
+          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+      
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: true
+      
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          enable-oidc-auth: true
