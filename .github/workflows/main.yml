@@ -1,0 +1,45 @@
+name: Build and deploy Azure Functions
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  AZURE_FUNCTIONAPP_NAME: 'onlinecourse-product-api'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './published'
+  CONFIGURATION: 'Release'
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: List files to find project
+        run: |
+          echo "Files in root directory:"
+          Get-ChildItem -Path . -Name
+          echo "Looking for .csproj files:"
+          Get-ChildItem -Path . -Filter "*.csproj" -Recurse | Select-Object Name, FullName
+      
+      - name: Restore dependencies
+        run: dotnet restore
+      
+      - name: Build solution
+        run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+      
+      - name: Publish application
+        run: dotnet publish --configuration ${{ env.CONFIGURATION }} --output ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }} --no-build
+      
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
