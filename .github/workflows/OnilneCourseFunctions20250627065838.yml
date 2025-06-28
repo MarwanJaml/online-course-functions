@@ -1,4 +1,4 @@
-name: Build and deploy Azure Functions
+name: Build and Deploy Azure Function App
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   CONFIGURATION: 'Release'
   DOTNET_VERSION: '8.0.x'
   WORKING_DIRECTORY: '.'
-  PROJECT_PATH: './OnlineCourseFunctions.csproj'  # Fixed typo: was OnilneCourseFunctions
+  PROJECT_PATH: './OnlineCourseFunctions.csproj'
 
 jobs:
   build:
@@ -43,7 +43,7 @@ jobs:
   deploy:
     needs: build
     runs-on: windows-latest
-    environment: production  # Optional: adds deployment protection
+    environment: production
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
