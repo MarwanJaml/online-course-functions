@@ -6,9 +6,8 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_NAME: 'onlinecourse-product-api'
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: './published'
-  CONFIGURATION: 'Release'
   DOTNET_VERSION: '8.0.x'
+  CONFIGURATION: 'Release'
 
 jobs:
   build-and-deploy:
@@ -21,25 +20,35 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
       
-      - name: List files to find project
-        run: |
-          echo "Files in root directory:"
-          Get-ChildItem -Path . -Name
-          echo "Looking for .csproj files:"
-          Get-ChildItem -Path . -Filter "*.csproj" -Recurse | Select-Object Name, FullName
-      
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore OnlineCourseFunctions.csproj
       
-      - name: Build solution
-        run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+      - name: Build with metadata generation
+        run: |
+          dotnet build OnlineCourseFunctions.csproj \
+          --configuration ${{ env.CONFIGURATION }} \
+          --no-restore \
+          /p:GenerateFunctionsMetadata=true
       
       - name: Publish application
-        run: dotnet publish --configuration ${{ env.CONFIGURATION }} --output ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }} --no-build
+        run: |
+          dotnet publish OnlineCourseFunctions.csproj \
+          --configuration ${{ env.CONFIGURATION }} \
+          --output ./published \
+          --no-build \
+          /p:GenerateFunctionsMetadata=true
+      
+      - name: Verify deployment package
+        run: |
+          echo "Checking published files:"
+          dir ./published
+          echo "Checking for function metadata:"
+          find ./published -name "*.json" | grep -i function
       
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          package: ./published
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: false  # Disable redundant build
