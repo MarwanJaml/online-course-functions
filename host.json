@@ -6,7 +6,36 @@
                 "isEnabled": true,
                 "excludedTypes": "Request"
             },
-            "enableLiveMetricsFilters": true
+            "enableLiveMetricsFilters": true,
+            "snapshotConfiguration": {
+                "isEnabled": true
+            }
+        },
+        "logLevel": {
+            "default": "Information",
+            "Host.Results": "Error",
+            "Function": "Debug", // Changed from Trace
+            "Host.Aggregator": "Information"
         }
+    },
+    "extensions": {
+        "sql": {
+            "MaxBatchSize": 300,
+            "PollingIntervalMs": 1000,
+            "MaxChangesPerWorker": 100
+        },
+        "http": {
+            "routePrefix": "api",
+            "maxOutstandingRequests": 200,
+            "maxConcurrentRequests": 100
+        }
+    },
+    "extensionBundle": {
+        "id": "Microsoft.Azure.Functions.ExtensionBundle",
+        "version": "[4.0.0, 5.0.0)"
+    },
+    "concurrency": {
+        "dynamicConcurrencyEnabled": true,
+        "snapshotPersistenceEnabled": true
     }
 }

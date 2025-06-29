@@ -10,6 +10,9 @@
 		<!-- Add this to prevent SDK version conflicts -->
 		<_NETCoreSdkIsPreview>false</_NETCoreSdkIsPreview>
 	</PropertyGroup>
+	<ItemGroup>
+	  <Content Include="local.settings.json" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />

@@ -13,7 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace OnilneCourseFunctions
+namespace OnilneCourseFunctions.Functions.UserProfileFunction
 {
     public class UserProfileFunction
     {

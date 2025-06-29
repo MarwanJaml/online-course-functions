@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OnilneCourseFunctions
+namespace OnilneCourseFunctions.Functions.SignUpValidationFunction
 {
     public class SignUpValidationFunction
     {
@@ -39,7 +39,7 @@ namespace OnilneCourseFunctions
             if (!Authorize(req))
             {
                 Logger.LogWarning("HTTP basic authentication validation failed.");
-                return (ActionResult)new UnauthorizedResult();
+                return new UnauthorizedResult();
             }
 
             // Get the request body
@@ -49,20 +49,20 @@ namespace OnilneCourseFunctions
             // If input data is null, show block page
             if (data == null)
             {
-                return (ActionResult)new OkObjectResult(new ResponseContent("ShowBlockPage", "There was a problem with your request."));
+                return new OkObjectResult(new ResponseContent("ShowBlockPage", "There was a problem with your request."));
             }
 
             // Print out the request body
             Logger.LogInformation("Request body: " + requestBody);
 
             // Get the current user language 
-            string language = (data.ui_locales == null || data.ui_locales.ToString() == "") ? "default" : data.ui_locales.ToString();
+            string language = data.ui_locales == null || data.ui_locales.ToString() == "" ? "default" : data.ui_locales.ToString();
             Logger.LogInformation($"Current language: {language}");
 
             // If email claim not found, show block page. Email is required and sent by default.
             if (data.email == null || data.email.ToString() == "" || data.email.ToString().Contains("@") == false)
             {
-                return (ActionResult)new OkObjectResult(new ResponseContent("ShowBlockPage", "Email name is mandatory."));
+                return new OkObjectResult(new ResponseContent("ShowBlockPage", "Email name is mandatory."));
             }
 
             // Get domain of email address
@@ -77,7 +77,7 @@ namespace OnilneCourseFunctions
             // If displayName claim doesn't exist, or it is too short, show validation error message. So, user can fix the input data.
             if (data.displayName == null || data.displayName.ToString().Length < 5)
             {
-                return (ActionResult)new BadRequestObjectResult(new ResponseContent("ValidationError", "Please provide a Display Name with at least five characters."));
+                return new BadRequestObjectResult(new ResponseContent("ValidationError", "Please provide a Display Name with at least five characters."));
             }
 
             var profile = new Profile()
@@ -113,7 +113,7 @@ namespace OnilneCourseFunctions
 
             // Input validation passed successfully, return `Allow` response.
             // TO DO: Configure the claims you want to return
-            return (ActionResult)new OkObjectResult(responseToReturn);
+            return new OkObjectResult(responseToReturn);
         }
 
         private bool Authorize(HttpRequest req)
@@ -160,7 +160,7 @@ namespace OnilneCourseFunctions
             var cred = Encoding.UTF8.GetString(Convert.FromBase64String(auth.Substring(6))).Split(':');
 
             // Evaluate the credentials and return the result
-            return (cred[0] == username && cred[1] == password);
+            return cred[0] == username && cred[1] == password;
         }
 
         private async Task<Profile> CallUpdateUserProfileFunction(Profile profile)
