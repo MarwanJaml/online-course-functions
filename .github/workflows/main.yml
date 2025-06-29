@@ -1,4 +1,4 @@
-name: Build and deploy Azure Functions
+name: Build and Deploy Azure Functions
 
 on:
   push:
@@ -6,49 +6,52 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_NAME: 'onlinecourse-product-api'
-  DOTNET_VERSION: '8.0.x'
   CONFIGURATION: 'Release'
+  DOTNET_VERSION: '8.0.x'
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup .NET 8
+
+      # Auto-find .csproj file (works even if case is wrong)
+      - name: Find project file
+        id: find-project
+        run: |
+          $project = Get-ChildItem -Path . -Filter *.csproj -Recurse | Select-Object -First 1
+          if (!$project) { 
+            Write-Error "No .csproj file found!"
+            exit 1
+          }
+          echo "PROJECT_PATH=$($project.FullName)" >> $env:GITHUB_OUTPUT
+          echo "Found project: $($project.FullName)"
+
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      
+
       - name: Restore dependencies
-        run: dotnet restore OnlineCourseFunctions.csproj
-      
-      - name: Build with metadata generation
+        run: dotnet restore "${{ steps.find-project.outputs.PROJECT_PATH }}"
+
+      - name: Build with metadata
         run: |
-          dotnet build OnlineCourseFunctions.csproj \
-          --configuration ${{ env.CONFIGURATION }} \
-          --no-restore \
+          dotnet build "${{ steps.find-project.outputs.PROJECT_PATH }}" `
+          --configuration ${{ env.CONFIGURATION }} `
+          --no-restore `
           /p:GenerateFunctionsMetadata=true
-      
-      - name: Publish application
+
+      - name: Publish
         run: |
-          dotnet publish OnlineCourseFunctions.csproj \
-          --configuration ${{ env.CONFIGURATION }} \
-          --output ./published \
-          --no-build \
+          dotnet publish "${{ steps.find-project.outputs.PROJECT_PATH }}" `
+          --configuration ${{ env.CONFIGURATION }} `
+          --output ./published `
           /p:GenerateFunctionsMetadata=true
-      
-      - name: Verify deployment package
-        run: |
-          echo "Checking published files:"
-          dir ./published
-          echo "Checking for function metadata:"
-          find ./published -name "*.json" | grep -i function
-      
-      - name: Deploy to Azure Functions
+
+      - name: Deploy to Azure
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           package: ./published
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-          scm-do-build-during-deployment: false  # Disable redundant build
